@@ -1,4 +1,6 @@
 from pathlib import Path
+import re
+import unicodedata
 
 from pypdf import PdfReader
 
@@ -6,6 +8,16 @@ from .errors import ResumeError
 
 MAX_FILE_BYTES = 20 * 1024 * 1024
 MAX_TEXT_CHARS = 60_000
+
+
+def clean_pdf_text(text: str) -> str:
+    """Replace PDF layout control codes without joining words or changing Unicode text."""
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = "".join(
+        " " if char != "\n" and unicodedata.category(char) in {"Cc", "Zs"} else char
+        for char in text
+    )
+    return "\n".join(re.sub(r" +", " ", line).rstrip() for line in text.split("\n")).strip()
 
 
 def check_file(path: Path, label: str) -> None:
@@ -34,7 +46,7 @@ def parse_pdf(path: Path) -> str:
                 raise ResumeError("PDF 已加密，请先解密后重试。")
             if len(reader.pages) > 100:
                 raise ResumeError("PDF 超过 100 页限制。")
-            text = "\n\n".join(page.extract_text() or "" for page in reader.pages).strip()
+            text = clean_pdf_text("\n\n".join(page.extract_text() or "" for page in reader.pages))
     except ResumeError:
         raise
     except Exception as exc:
