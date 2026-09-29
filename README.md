@@ -23,9 +23,72 @@ resume-cli --help
 
 macOS/Linux 使用 `source .venv/bin/activate`。如 PowerShell 不允许激活脚本，可直接执行 `.\.venv\Scripts\resume-cli.exe`。也支持 `python -m resume_cli`。有 uv 时可用 `uv sync --extra dev --frozen` 和 `uv run resume-cli --help`。
 
-## 环境变量
+## 首次使用：选择平台并录入 API Key
 
-Mock 和 parse 不需要配置。真实 AI 模式在项目根目录复制 `.env.example` 为 `.env`，填写自己的 Key：
+安装完成后运行：
+
+```powershell
+resume-cli configure
+```
+
+向导会依次让你选择平台、填写模型 ID、隐藏输入 API Key，再确认保存。全程离线，不会自动验证 Key，也不会发出测试请求；无需把 Key 放到命令参数或聊天里。可随时再次运行此命令更换平台，已有配置会先询问是否替换。
+
+预置平台如下，模型名称请使用自己账户控制台中可用、支持 **Chat Completions + JSON mode** 的模型 ID（不是网页产品名称）。向导不联网获取模型列表，避免在配置阶段传输 Key。不同地区、计费方案的 Key 和接口不能混用。
+
+| 平台 | 预置 Base URL |
+| --- | --- |
+| OpenAI | `https://api.openai.com/v1` |
+| DeepSeek | `https://api.deepseek.com` |
+| 阿里云百炼 / 通义千问（中国站） | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
+| Google Gemini | `https://generativelanguage.googleapis.com/v1beta/openai/` |
+| Moonshot / Kimi（中国站） | `https://api.moonshot.cn/v1` |
+| 智谱 GLM（通用 API） | `https://open.bigmodel.cn/api/paas/v4` |
+| 硅基流动（中国站） | `https://api.siliconflow.cn/v1` |
+| 火山方舟 / 豆包（北京） | `https://ark.cn-beijing.volces.com/api/v3` |
+| 自定义兼容服务 | 手动填写 HTTPS Base URL 和模型 ID |
+
+例如选择 OpenAI 后可填写账户支持的 `gpt-4o-mini`；百炼可填写 `qwen-plus`。火山方舟也可填写已创建的推理接入点 ID。其他地区或 Coding Plan 专用接口使用“自定义兼容服务”。Anthropic 原生 Messages API、Azure 特有鉴权接口未接入，不能仅修改地址就宣称支持。预置平台提供接口配置便利，不代表所有模型都支持 JSON mode，也不代表已经逐个平台真实联网验证。
+
+完整使用流程：
+
+```powershell
+resume-cli configure
+resume-cli configure --show
+resume-cli parse examples/resume.pdf
+resume-cli extract examples/resume.pdf --output result.json
+resume-cli score examples/resume.pdf --jd examples/jd.txt --output score.json
+```
+
+配置管理：
+
+```powershell
+resume-cli configure --help
+resume-cli configure --show   # 显示实际生效的平台、地址、模型，始终隐藏 Key
+resume-cli configure --reset  # 删除本机保存的配置；不修改环境变量或 .env
+```
+
+### Key 保存位置与隐私边界
+
+- Windows：`%LOCALAPPDATA%\resume-cli\config.json`。
+- macOS/Linux：`$XDG_CONFIG_HOME/resume-cli/config.json`，未设置时为 `~/.config/resume-cli/config.json`。
+- 配置写入系统用户目录，不写入项目仓库；配置目录额外生成忽略全部内容的 `.gitignore`。本项目也忽略 `.env` 和本地配置副本，不会通过正常 `git add` 提交 Key。不要手动强制提交或复制到受版本管理的文件。
+- **本地配置是未加密 JSON 文件**；Unix 文件权限为仅当前用户读写（0600），Windows 使用用户目录继承权限。请不要分享该文件或放入同步盘；本机管理员或能访问该目录的程序仍可能读取它。
+- 输入 Key 时不回显，查看配置、日志和错误都不显示 Key；不接受 Key 命令行参数或管道输入。终端无法隐藏输入时直接退出，不退回明文输入。
+- **安装、配置、查看/删除配置、parse 和 Mock 模式均不会发送 Key。实际执行非 Mock 的 extract/score 时，必须通过 HTTPS 向所选 AI 平台发送 Key 用于认证，同时发送简历/JD 文本。**没有另设上传、遥测或 Key 收集服务；并不承诺联网 AI 调用期间 Key 完全不传输。
+
+### 没有 Key 会怎样？
+
+未配置 Key 时，`parse` 和 `--mock` 正常工作。对有效输入运行非 Mock 的 `extract` 或 `score` 会在创建 AI 客户端前失败，退出码为 **1**，不发出 AI 请求：
+
+```text
+错误：缺少 OPENAI_API_KEY：请先运行 resume-cli configure，或使用 --mock 离线演示。
+```
+
+保存配置不会判断 Key 的线上有效性。Key 错误、失效、额度不足或模型不支持，会在真实调用时报告相应错误。
+
+## 环境变量（可选，兼容原用法）
+
+Mock 和 parse 不需要配置。除向导外，也可以在项目根目录复制 `.env.example` 为 `.env`，填写自己的 Key：
 
 ```dotenv
 OPENAI_API_KEY=your-key
@@ -34,7 +97,9 @@ OPENAI_BASE_URL=https://api.openai.com/v1
 RESUME_AI_TIMEOUT=60
 ```
 
-程序只读取当前目录的 `.env`，系统环境变量优先。模型必须支持 JSON mode；兼容服务可调整 BASE_URL 和 MODEL。超时单位为秒，合法范围 `(0,300]`；SDK 对部分临时错误最多重试两次，因此整体等待可能长于单次超时。不要提交 `.env` 或真实简历。真实 AI 模式会把提取的简历文本和 JD 发送给配置的服务。
+配置来源优先级为：**含 OPENAI_API_KEY 的系统环境变量 → 含 OPENAI_API_KEY 的当前目录 .env → configure 保存的本机配置**。Key、BASE_URL、MODEL 作为同一来源的一组读取，避免把某平台的本机 Key 发往另一个来源的地址。环境变量或 .env 来源省略地址/模型时，默认 OpenAI 地址和 `gpt-4o-mini`；使用其他平台必须在同一来源中一起配置三项。仅设置 BASE_URL 不会覆盖本机配置的地址。高优先级来源的 Key 为空或为示例占位符时会明确报错，不悄悄使用其他 Key。
+
+程序只读取当前目录的 `.env`，不修改进程环境变量。超时配置仍按系统环境变量、当前目录 `.env`、默认 60 秒读取；合法范围 `(0,300]`。SDK 对部分临时错误最多重试两次，因此整体等待可能长于单次超时。不要提交 `.env` 或真实简历。
 
 ## CLI 命令
 
@@ -91,6 +156,7 @@ Mock 评分按 JD 中受支持技能词的命中比例计算技能分；经验�
 ```text
 src/resume_cli/
   cli.py       参数、流程编排、输出和退出码
+  config.py    离线配置向导、本机凭据及配置优先级
   files.py     PDF / JD 校验及文本读取
   ai.py        提示词、API 调用、JSON 清理和校验
   models.py    简历、教育、评分的数据模型
@@ -113,6 +179,7 @@ python -m ruff check .
 ## 已实现功能
 
 - parse / extract / score 与子命令帮助。
+- configure 首次配置向导、8 个国内外平台预设、自定义接口、隐藏输入、脱敏查看与删除。
 - PDF 不存在、扩展名错误、伪 PDF、损坏、加密、空文本等错误提示。
 - JD 不存在、空白、非 UTF-8、路径不是文件等错误提示。
 - JSON 严格校验，0–100 整数评分，非空理由和面试问题。
@@ -141,3 +208,5 @@ docker run --rm --env-file .env resume-cli score examples/resume.pdf --jd exampl
 容器默认包含虚构示例。自己的文件通过 volume 挂载，输出路径也应挂载到宿主机。Docker 构建需联网安装依赖。
 
 API 接口依据：[OpenAI Structured Outputs 官方文档](https://developers.openai.com/api/docs/guides/structured-outputs)。
+
+平台配置参考：[DeepSeek](https://api-docs.deepseek.com/)、[百炼](https://help.aliyun.com/zh/model-studio/base-url)、[Gemini OpenAI 兼容接口](https://ai.google.dev/gemini-api/docs/openai)、[Kimi](https://platform.moonshot.cn/docs)、[智谱](https://docs.bigmodel.cn/)、[硅基流动](https://docs.siliconflow.cn/docs/userguide/quickstart)、[火山方舟](https://docs.volcengine.com/docs/ark/deep-thinking)。

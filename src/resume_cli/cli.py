@@ -4,9 +4,8 @@ import logging
 import sys
 from pathlib import Path
 
-from dotenv import load_dotenv
-
 from .ai import request_ai
+from .config import configure, reset_config, show_config
 from .errors import ResumeError
 from .files import check_ai_length, parse_pdf, read_jd
 from .mock import mock_extract, mock_score
@@ -15,6 +14,10 @@ from .mock import mock_extract, mock_score
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="resume-cli", description="PDF 简历解析与 AI 岗位匹配")
     sub = parser.add_subparsers(dest="command", required=True)
+    setup = sub.add_parser("configure", help="离线配置 AI 平台、模型和 API Key")
+    options = setup.add_mutually_exclusive_group()
+    options.add_argument("--show", action="store_true", help="查看生效配置（不显示 Key）")
+    options.add_argument("--reset", action="store_true", help="删除本机保存的配置")
     for name, description in (("parse", "提取 PDF 文本"), ("extract", "提取结构化信息"),
                               ("score", "根据 JD 评分")):
         command = sub.add_parser(name, help=description, description=description)
@@ -33,11 +36,17 @@ def main(argv: list[str] | None = None) -> int:
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8")
     args = build_parser().parse_args(argv)
-    logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING,
+    logging.basicConfig(level=logging.INFO if getattr(args, "verbose", False) else logging.WARNING,
                         format="%(levelname)s: %(message)s", force=True)
     try:
-        # Explicit local .env only; real environment variables always take precedence.
-        load_dotenv(Path.cwd() / ".env", override=False)
+        if args.command == "configure":
+            if args.show:
+                show_config()
+            elif args.reset:
+                reset_config()
+            else:
+                configure()
+            return 0
         if args.output:
             protected = [args.pdf_path] + ([args.jd] if args.command == "score" else [])
             if any(args.output.resolve() == path.resolve() for path in protected):

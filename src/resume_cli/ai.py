@@ -1,11 +1,11 @@
 import json
-import os
 import re
 
 from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI
 from pydantic import ValidationError
 
 from .errors import ResumeError
+from .config import resolve_settings, timeout_value
 from .models import MatchScore, Resume
 
 
@@ -24,11 +24,9 @@ def validate_response(raw: str, model: type[Resume] | type[MatchScore]):
 
 def request_ai(resume: str, jd: str | None = None):
     model_type = Resume if jd is None else MatchScore
-    key = os.getenv("OPENAI_API_KEY", "").strip()
-    if not key or key == "replace-with-your-key":
-        raise ResumeError("缺少 OPENAI_API_KEY：请配置环境变量或使用 --mock。")
+    settings = resolve_settings()
     try:
-        timeout = float(os.getenv("RESUME_AI_TIMEOUT", "60"))
+        timeout = float(timeout_value())
         if not 0 < timeout <= 300:
             raise ValueError
     except ValueError as exc:
@@ -48,13 +46,13 @@ def request_ai(resume: str, jd: str | None = None):
     )
     try:
         with OpenAI(
-            api_key=key,
-            base_url=os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1",
+            api_key=settings.api_key.get_secret_value(),
+            base_url=settings.base_url,
             timeout=timeout,
             max_retries=2,
         ) as client:
             response = client.chat.completions.create(
-                model=os.getenv("OPENAI_MODEL") or "gpt-4o-mini",
+                model=settings.model,
                 messages=[
                     {"role": "system", "content": system},
                     {"role": "user", "content": json.dumps({"resume": resume, "jd": jd}, ensure_ascii=False)},
