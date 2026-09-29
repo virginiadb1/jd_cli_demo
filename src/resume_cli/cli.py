@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .ai import request_ai
 from .config import configure, reset_config, show_config
+from .display import format_resume
 from .errors import ResumeError
 from .files import check_ai_length, parse_pdf, read_jd
 from .mock import mock_extract, mock_score
@@ -24,6 +25,10 @@ def build_parser() -> argparse.ArgumentParser:
         command.add_argument("pdf_path", type=Path, help="本地 PDF 简历")
         command.add_argument("--output", type=Path, help="保存结果（parse 为文本，其余为 JSON）")
         command.add_argument("--verbose", action="store_true", help="向 stderr 输出简要日志")
+        if name == "parse":
+            display = command.add_mutually_exclusive_group()
+            display.add_argument("--plain", action="store_true", help="使用纯文本输出，不进行展示排版")
+            display.add_argument("--pretty", action="store_true", help="强制使用易读排版（终端默认开启）")
         if name != "parse":
             command.add_argument("--mock", action="store_true", help="离线规则演示，不调用 AI")
         if name == "score":
@@ -68,7 +73,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.output:
             args.output.write_text(output + "\n", encoding="utf-8")
             logging.info("结果已保存")
-        print(output)
+        if args.command == "parse" and not args.plain and (args.pretty or sys.stdout.isatty()):
+            print(format_resume(output, args.pdf_path.name))
+        else:
+            print(output)
         return 0
     except (ResumeError, OSError) as exc:
         message = str(exc) if isinstance(exc, ResumeError) else "文件读写失败，请检查路径和权限。"

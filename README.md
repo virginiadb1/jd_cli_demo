@@ -105,6 +105,8 @@ RESUME_AI_TIMEOUT=60
 
 ```powershell
 resume-cli parse examples/resume.pdf
+resume-cli parse examples/resume.pdf --plain
+resume-cli parse examples/resume.pdf --pretty
 resume-cli parse examples/resume.pdf --output resume.txt
 resume-cli extract examples/resume.pdf --mock
 resume-cli extract examples/resume.pdf --output result.json
@@ -113,7 +115,9 @@ resume-cli score examples/resume.pdf --jd examples/jd.txt --output score.json --
 resume-cli score --help
 ```
 
-`--output` 同时保留终端输出，文件使用 UTF-8；父目录必须存在，已有结果文件会覆盖，但禁止覆盖输入文件。`--verbose` 日志及错误写入 stderr；stdout 仅包含文本或 JSON，适合管道使用。退出码：成功 0、运行失败 1、参数错误 2、用户中断 130。
+`parse` 在交互式终端默认使用易读排版：显示文件名和字符数、突出常见章节标题、合并单独占行的项目符号，并按中英文显示宽度换行（最多 96 列）。`--plain` 关闭排版；`--pretty` 强制开启。排版只用于展示，不改写 AI 输入或保存的原始提取文本；标题识别是启发式规则，复杂 PDF 可用 `--plain` 对照。
+
+`--output` 同时保留终端输出，文件使用 UTF-8；父目录必须存在，已有结果文件会覆盖，但禁止覆盖输入文件。`--verbose` 日志及错误写入 stderr；重定向或管道下 parse 默认输出纯文本，extract/score 始终输出 JSON，适合程序使用。退出码：成功 0、运行失败 1、参数错误 2、用户中断 130。
 
 ## 示例输入与输出
 
@@ -158,6 +162,7 @@ src/resume_cli/
   cli.py       参数、流程编排、输出和退出码
   config.py    离线配置向导、本机凭据及配置优先级
   files.py     PDF / JD 校验及文本读取
+  display.py   终端排版、列表合并和中英文换行
   ai.py        提示词、API 调用、JSON 清理和校验
   models.py    简历、教育、评分的数据模型
   mock.py      无网络的确定性演示
