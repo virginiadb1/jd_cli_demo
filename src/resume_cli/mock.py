@@ -1,41 +1,37 @@
-"""Deterministic offline demonstration, deliberately not an AI evaluation."""
-import re
+"""Fixed offline demonstration data, deliberately unrelated to the input files."""
 
-from .models import MatchScore, Resume
-
-SKILLS = ("Python", "Golang", "JavaScript", "TypeScript", "React", "Vue", "FastAPI",
-          "Docker", "Kubernetes", "PostgreSQL", "MySQL", "Git", "OpenAI", "Linux")
+from .models import Education, MatchScore, Resume
 
 
-def mock_extract(text: str) -> Resume:
-    def find(pattern):
-        match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
-        return match.group(1).strip() if match else ""
-
+def mock_extract(_text: str) -> Resume:
+    """Return complete fictional data so every JSON field is visible in a demo."""
     return Resume(
-        name=find(r"^(?:Name|姓名)\s*[:：]\s*(.+)$"),
-        phone=find(r"(?<!\d)(1[3-9]\d{9})(?!\d)"),
-        email=find(r"([\w.+-]+@[\w.-]+\.[A-Za-z]{2,})"),
-        city=find(r"^(?:City|城市)\s*[:：]\s*(.+)$"),
-        education=[],
-        skills=[skill for skill in SKILLS if re.search(
-            rf"(?<!\w){re.escape(skill)}(?!\w)", text, re.IGNORECASE
+        name="张明（虚构）",
+        phone="13800000000",
+        email="demo@example.com",
+        city="杭州",
+        education=[Education(
+            school="示例大学",
+            major="计算机科学与技术",
+            degree="本科",
+            graduation_time="2020-06",
         )],
+        skills=["Node.js", "React", "Python", "Golang", "Docker", "Git", "OpenAI API"],
     )
 
 
-def mock_score(text: str, jd: str) -> MatchScore:
-    actual = set(mock_extract(text).skills)
-    required = set(mock_extract(jd).skills)
-    shared = sorted(actual & required)
-    skill_score = round(100 * len(shared) / len(required)) if required else 0
-    # Experience and education cannot be assessed by this small keyword demo.
+def mock_score(_text: str, _jd: str) -> MatchScore:
+    """Return a complete fixed score, independent of the resume and JD contents."""
     return MatchScore(
-        overall_score=(skill_score * 50 + 50) // 100,
-        skill_score=skill_score, experience_score=0, education_score=0,
-        comment="[MOCK 演示] 仅按技能词命中比例计算技能分；命中："
-        + ("、".join(shared) or "无")
-        + "。经验及教育未评估，演示占位为 0；总分权重 50%/30%/20%，不代表真实能力。",
-        interview_questions=["请介绍一个项目中你负责的模块及其技术取舍。",
-                             "请说明你如何处理大模型 API 超时和不合法 JSON 响应。"],
+        overall_score=86,
+        skill_score=90,
+        experience_score=85,
+        education_score=75,
+        comment=("[MOCK 固定演示数据] 候选人的 Node.js、React 与 Python 技能和岗位较匹配，"
+                 "具备全栈项目经验；建议面试时进一步核实 Golang 熟练度及专有云交付经验。"),
+        interview_questions=[
+            "请介绍一个你主导的 Node.js 与 React 全栈项目，以及关键技术取舍。",
+            "你如何设计前后端联调、错误处理和性能监控流程？",
+            "请说明你参与专有云部署或交付的实际经验。",
+        ],
     )

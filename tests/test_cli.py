@@ -77,7 +77,7 @@ def test_mock_commands(pdf, tmp_path, capsys, command):
     assert json.loads(captured.out) == json.loads(output.read_text(encoding="utf-8"))
     assert "MOCK" in captured.err
     if command == "score":
-        assert json.loads(captured.out)["skill_score"] == 67
+        assert json.loads(captured.out)["skill_score"] == 90
 
 
 def test_prevent_overwrite(pdf, capsys):

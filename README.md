@@ -123,16 +123,23 @@ resume-cli score --help
 
 `examples/resume.pdf` 包含虚构候选人 Alex Chen 的 Python、React、FastAPI、Docker 项目经历；`examples/jd.txt` 是虚构全栈岗位要求。可通过 `python scripts/create_sample.py` 重建 PDF。
 
-Mock 提取示例（规则仅识别显式姓名、城市、电话、邮箱和技能词；教育列表不作推测）：
+Mock 提取示例（固定虚构演示数据，不读取或识别输入简历；用于在没有 API Key 时完整展示所有字段）：
 
 ```json
 {
-  "name": "Alex Chen",
-  "phone": "",
-  "email": "alex@example.com",
-  "city": "Beijing",
-  "education": [],
-  "skills": ["Python", "React", "FastAPI", "Docker", "PostgreSQL", "Git", "OpenAI"]
+  "name": "张明（虚构）",
+  "phone": "13800000000",
+  "email": "demo@example.com",
+  "city": "杭州",
+  "education": [
+    {
+      "school": "示例大学",
+      "major": "计算机科学与技术",
+      "degree": "本科",
+      "graduation_time": "2020-06"
+    }
+  ],
+  "skills": ["Node.js", "React", "Python", "Golang", "Docker", "Git", "OpenAI API"]
 }
 ```
 
@@ -153,7 +160,7 @@ Mock 提取示例（规则仅识别显式姓名、城市、电话、邮箱和技
 
 真实模式先校验模型返回的所有分数，再由程序按技能 50%、经验 30%、教育 20%计算总分，四舍五入到整数，保证总分一致性。缺少岗位或简历证据时，要求模型在理由中标明不确定性。评分用于演示，仍需人工核实。
 
-Mock 评分按 JD 中受支持技能词的命中比例计算技能分；经验和教育未评估，占位为 0，总分使用同样权重。输出理由和 stderr 均明确标记 MOCK，不能用于判断真实能力。
+Mock 提取和评分都是固定虚构数据，与输入 PDF/JD 内容无关；输出理由和 stderr 均明确标记 MOCK，只用于演示完整 CLI 流程，不能用于判断真实候选人能力。真实解析请去掉 `--mock`。
 
 ## 项目结构
 
