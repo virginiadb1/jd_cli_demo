@@ -40,6 +40,7 @@ def test_empty_reason(field, value):
 def install_transport(monkeypatch, handler):
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("OPENAI_BASE_URL", "https://mock.invalid/v1")
+    monkeypatch.setenv("OPENAI_MODEL", "test-model")
     monkeypatch.setattr("resume_cli.ai.OpenAI", lambda **kwargs: OpenAI(
         **{**kwargs, "max_retries": 0},
         http_client=httpx.Client(transport=httpx.MockTransport(handler)),

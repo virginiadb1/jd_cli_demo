@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, SecretStr, ValidationError
 
 from .errors import ResumeError
 
-# Models are entered explicitly: availability varies by account, region and date.
+# Offline defaults; users may override them for their account or deployment.
 PROVIDERS = (
     ("OpenAI", "https://api.openai.com/v1"),
     ("DeepSeek", "https://api.deepseek.com"),
@@ -26,12 +26,28 @@ PROVIDERS = (
     ("自定义 OpenAI 兼容服务", ""),
 )
 
+DEFAULT_MODELS = {
+    "https://api.openai.com/v1": "gpt-4o-mini",
+    "https://api.deepseek.com": "deepseek-flash",
+    "https://api.deepseek.com/v1": "deepseek-flash",
+    "https://dashscope.aliyuncs.com/compatible-mode/v1": "qwen-plus",
+    "https://generativelanguage.googleapis.com/v1beta/openai": "gemini-3.8-flash",
+    "https://api.moonshot.cn/v1": "kimi-k2.6",
+    "https://open.bigmodel.cn/api/paas/v4": "glm-4-flash",
+    "https://api.siliconflow.cn/v1": "deepseek-ai/DeepSeek-V3.2",
+    "https://ark.cn-beijing.volces.com/api/v3": "doubao-seed-2-0-lite-260215",
+}
+
+
+def default_model(base_url: str) -> str:
+    return DEFAULT_MODELS.get(base_url.rstrip("/"), "")
+
 
 class AISettings(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     provider: str
     base_url: str
-    model: str
+    model: str = ""
     api_key: SecretStr
 
 
@@ -64,8 +80,9 @@ def valid_key(value: str) -> bool:
 
 def validate_settings(settings: AISettings) -> AISettings:
     validate_url(settings.base_url)
-    if not settings.model.strip():
-        raise ResumeError("模型名称不能为空，请运行 resume-cli configure。")
+    settings.model = settings.model.strip() or default_model(settings.base_url)
+    if not settings.model:
+        raise ResumeError("自定义服务没有预设模型，请运行 resume-cli configure 填写模型 ID。")
     if not valid_key(settings.api_key.get_secret_value()):
         raise ResumeError("缺少有效的 OPENAI_API_KEY：请运行 resume-cli configure，或使用 --mock。")
     return settings
@@ -90,7 +107,7 @@ def resolve_settings() -> AISettings:
                 provider=name,
                 api_key=SecretStr((source.get("OPENAI_API_KEY") or "").strip()),
                 base_url=source.get("OPENAI_BASE_URL") or "https://api.openai.com/v1",
-                model=source.get("OPENAI_MODEL") or "gpt-4o-mini",
+                model=source.get("OPENAI_MODEL") or "",
             ))
     settings = load_saved()
     if settings is None:
@@ -155,10 +172,15 @@ def configure() -> None:
                 except ResumeError as exc:
                     print(str(exc))
         print(f"服务地址：{base_url}")
-        print("请输入该平台控制台中可用且支持 JSON mode 的模型 ID；方舟也可填推理接入点 ID。")
-        model = ""
-        while not model:
-            model = input("模型 ID：").strip()
+        default = default_model(base_url)
+        if default:
+            model = input(f"模型 ID（可选，直接回车使用 {default}）：").strip() or default
+        else:
+            print("此自定义地址没有已知默认模型，请填写服务提供的模型 ID。")
+            model = ""
+            while not model:
+                model = input("模型 ID：").strip()
+        print(f"使用模型：{model}")
         # Fail closed if getpass cannot disable echo; never fall back to visible input.
         with warnings.catch_warnings():
             warnings.simplefilter("error", getpass.GetPassWarning)

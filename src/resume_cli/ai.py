@@ -9,6 +9,21 @@ from .config import resolve_settings, timeout_value
 from .models import MatchScore, Resume
 
 
+def model_options(settings) -> dict:
+    """Non-thinking mode for the curated defaults used in this JSON extraction task."""
+    endpoint = settings.base_url.rstrip("/")
+    if (endpoint == "https://dashscope.aliyuncs.com/compatible-mode/v1"
+            and settings.model == "qwen-plus"):
+        return {"extra_body": {"enable_thinking": False}}
+    if (endpoint in {"https://api.deepseek.com", "https://api.deepseek.com/v1"}
+            and settings.model == "deepseek-flash") or (
+            endpoint == "https://api.moonshot.cn/v1" and settings.model == "kimi-k2.6") or (
+            endpoint == "https://ark.cn-beijing.volces.com/api/v3"
+            and settings.model == "doubao-seed-2-0-lite-260215"):
+        return {"extra_body": {"thinking": {"type": "disabled"}}}
+    return {}
+
+
 def validate_response(raw: str, model: type[Resume] | type[MatchScore]):
     """Only remove a complete Markdown fence; never invent missing fields or scores."""
     raw = raw.strip()
@@ -58,13 +73,19 @@ def request_ai(resume: str, jd: str | None = None):
                     {"role": "user", "content": json.dumps({"resume": resume, "jd": jd}, ensure_ascii=False)},
                 ],
                 response_format={"type": "json_object"},
+                **model_options(settings),
             )
     except APITimeoutError as exc:
         raise ResumeError("AI 请求超时，请检查网络或调整 RESUME_AI_TIMEOUT。") from exc
     except APIConnectionError as exc:
         raise ResumeError("无法连接 AI 服务，请检查网络及 OPENAI_BASE_URL。") from exc
     except APIStatusError as exc:
-        hints = {401: "API Key 无效", 403: "无访问权限", 429: "限流或额度不足"}
+        hints = {
+            400: "模型或请求参数不兼容，请运行 resume-cli configure 调整模型",
+            401: "API Key 无效", 403: "无访问权限，请检查账户是否已开通所选模型",
+            404: "模型不存在、已下线或地址不正确，请运行 resume-cli configure 调整配置",
+            429: "限流或额度不足",
+        }
         hint = hints.get(exc.status_code, "请检查模型、接口配置或稍后重试")
         raise ResumeError(f"AI 调用失败（HTTP {exc.status_code}）：{hint}。") from exc
     except ValueError as exc:

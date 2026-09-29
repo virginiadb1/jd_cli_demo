@@ -111,8 +111,60 @@ def test_source_precedence_without_cross_provider_key_leak(monkeypatch, tmp_path
     assert resolve_settings().api_key.get_secret_value() == "dotenv-secret"
     assert resolve_settings().base_url == "https://env.example/v1"
     monkeypatch.setenv("OPENAI_API_KEY", "environment-secret")
+    monkeypatch.setenv("OPENAI_MODEL", "explicit-custom-model")
     assert resolve_settings().base_url == "https://other.example/v1"
-    assert resolve_settings().model == "gpt-4o-mini"
+    assert resolve_settings().model == "explicit-custom-model"
+
+
+@pytest.mark.parametrize("number", range(1, len(PROVIDERS)))
+def test_enter_uses_provider_default(monkeypatch, number):
+    terminal(monkeypatch, [str(number), "", ""])
+    assert main(["configure"]) == 0
+    saved = load_saved()
+    assert saved.model == config.default_model(PROVIDERS[number - 1][1])
+    assert saved.model
+
+
+@pytest.mark.parametrize("source", ["env", "dotenv", "saved"])
+@pytest.mark.parametrize("url", [row[1] for row in PROVIDERS if row[1]])
+def test_missing_model_uses_same_provider_default(monkeypatch, tmp_path, source, url):
+    if source == "env":
+        monkeypatch.setenv("OPENAI_API_KEY", SECRET)
+        monkeypatch.setenv("OPENAI_BASE_URL", url)
+    elif source == "dotenv":
+        (tmp_path / ".env").write_text(f"OPENAI_API_KEY={SECRET}\nOPENAI_BASE_URL={url}\n")
+    else:
+        config.config_path().parent.mkdir()
+        config.config_path().write_text(json.dumps({
+            "provider": "legacy", "base_url": url, "api_key": SECRET,
+        }), encoding="utf-8")
+    assert resolve_settings().model == config.default_model(url)
+
+
+def test_custom_endpoint_never_assumes_openai_model(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", SECRET)
+    monkeypatch.setenv("OPENAI_BASE_URL", "https://custom.example/v1")
+    with pytest.raises(ResumeError, match="自定义服务"):
+        resolve_settings()
+
+
+def test_default_model_reaches_sdk(monkeypatch):
+    import httpx
+    from openai import OpenAI
+    from resume_cli.ai import request_ai
+    terminal(monkeypatch, ["2", "", ""])
+    assert main(["configure"]) == 0
+    def handler(request):
+        body = json.loads(request.content)
+        assert body["model"] == "deepseek-flash"
+        assert body["thinking"] == {"type": "disabled"}
+        payload = dict(name="", phone="", email="", city="", education=[], skills=[])
+        return httpx.Response(200, json={"id": "x", "created": 0, "object": "chat.completion",
+            "model": body["model"], "choices": [{"index": 0, "finish_reason": "stop",
+            "message": {"role": "assistant", "content": json.dumps(payload)}}]})
+    monkeypatch.setattr("resume_cli.ai.OpenAI", lambda **kwargs: OpenAI(
+        **kwargs, http_client=httpx.Client(transport=httpx.MockTransport(handler))))
+    assert request_ai("fictional resume").skills == []
 
 
 def test_empty_environment_key_does_not_fall_back(monkeypatch):

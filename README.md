@@ -31,23 +31,23 @@ macOS/Linux 使用 `source .venv/bin/activate`。如 PowerShell 不允许激活�
 resume-cli configure
 ```
 
-向导会依次让你选择平台、填写模型 ID、隐藏输入 API Key，再确认保存。全程离线，不会自动验证 Key，也不会发出测试请求；无需把 Key 放到命令参数或聊天里。可随时再次运行此命令更换平台，已有配置会先询问是否替换。
+向导会依次让你选择平台、确认默认模型（直接回车即可）、隐藏输入 API Key，再确认保存。全程离线，不会自动验证 Key，也不会发出测试请求；无需把 Key 放到命令参数或聊天里。可随时再次运行此命令更换平台，已有配置会先询问是否替换。
 
-预置平台如下，模型名称请使用自己账户控制台中可用、支持 **Chat Completions + JSON mode** 的模型 ID（不是网页产品名称）。向导不联网获取模型列表，避免在配置阶段传输 Key。不同地区、计费方案的 Key 和接口不能混用。
+预置平台如下，每个预置平台都有默认模型，**不必手动选择或填写，直接回车即可**。需要覆盖时，可填写自己账户可用且支持 **Chat Completions + JSON mode** 的模型 ID。向导不联网获取模型列表，避免在配置阶段传输 Key。不同地区、计费方案的 Key 和接口不能混用。
 
-| 平台 | 预置 Base URL |
-| --- | --- |
-| OpenAI | `https://api.openai.com/v1` |
-| DeepSeek | `https://api.deepseek.com` |
-| 阿里云百炼 / 通义千问（中国站） | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
-| Google Gemini | `https://generativelanguage.googleapis.com/v1beta/openai/` |
-| Moonshot / Kimi（中国站） | `https://api.moonshot.cn/v1` |
-| 智谱 GLM（通用 API） | `https://open.bigmodel.cn/api/paas/v4` |
-| 硅基流动（中国站） | `https://api.siliconflow.cn/v1` |
-| 火山方舟 / 豆包（北京） | `https://ark.cn-beijing.volces.com/api/v3` |
-| 自定义兼容服务 | 手动填写 HTTPS Base URL 和模型 ID |
+| 平台 | 默认模型（回车使用） | 预置 Base URL |
+| --- | --- | --- |
+| OpenAI | `gpt-4o-mini` | `https://api.openai.com/v1` |
+| DeepSeek | `deepseek-flash` | `https://api.deepseek.com` |
+| 阿里云百炼 / 通义千问（中国站） | `qwen-plus` | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
+| Google Gemini | `gemini-3.8-flash` | `https://generativelanguage.googleapis.com/v1beta/openai/` |
+| Moonshot / Kimi（中国站） | `kimi-k2.6` | `https://api.moonshot.cn/v1` |
+| 智谱 GLM（通用 API） | `glm-4-flash` | `https://open.bigmodel.cn/api/paas/v4` |
+| 硅基流动（中国站） | `deepseek-ai/DeepSeek-V3.2` | `https://api.siliconflow.cn/v1` |
+| 火山方舟 / 豆包（北京） | `doubao-seed-2-0-lite-260215` | `https://ark.cn-beijing.volces.com/api/v3` |
+| 自定义兼容服务 | 未知地址需手动填写；已知地址使用对应默认值 | 手动填写 HTTPS Base URL |
 
-例如选择 OpenAI 后可填写账户支持的 `gpt-4o-mini`；百炼可填写 `qwen-plus`。火山方舟也可填写已创建的推理接入点 ID。其他地区或 Coding Plan 专用接口使用“自定义兼容服务”。Anthropic 原生 Messages API、Azure 特有鉴权接口未接入，不能仅修改地址就宣称支持。预置平台提供接口配置便利，不代表所有模型都支持 JSON mode，也不代表已经逐个平台真实联网验证。
+例如选择 DeepSeek 后，模型一栏直接回车会保存 `deepseek-flash`，以后 extract/score 会自动使用它。显式填写的模型始终保留，不会被默认值覆盖。缺失或空白模型会根据已知 Base URL 补默认值；未知地址会在本地提示填写模型，绝不会误用 OpenAI 模型。火山方舟也可填写已创建的推理接入点 ID。其他地区或 Coding Plan 专用接口使用“自定义兼容服务”。Anthropic 原生 Messages API、Azure 特有鉴权接口未接入，不能仅修改地址就宣称支持。默认值是离线预设，不代表账户一定已开通该模型；无权限、余额不足或模型下线仍会明确报错，可重新 configure 修改模型。不会自动切换平台或偷偷换用其他收费模型。针对预置的通义、DeepSeek、Kimi、豆包默认模型，程序带上关闭思考模式的参数以适配本任务；其他手动模型不自动附加这些参数。尚未逐个平台真实联网验证。
 
 完整使用流程：
 
@@ -97,7 +97,7 @@ OPENAI_BASE_URL=https://api.openai.com/v1
 RESUME_AI_TIMEOUT=60
 ```
 
-配置来源优先级为：**含 OPENAI_API_KEY 的系统环境变量 → 含 OPENAI_API_KEY 的当前目录 .env → configure 保存的本机配置**。Key、BASE_URL、MODEL 作为同一来源的一组读取，避免把某平台的本机 Key 发往另一个来源的地址。环境变量或 .env 来源省略地址/模型时，默认 OpenAI 地址和 `gpt-4o-mini`；使用其他平台必须在同一来源中一起配置三项。仅设置 BASE_URL 不会覆盖本机配置的地址。高优先级来源的 Key 为空或为示例占位符时会明确报错，不悄悄使用其他 Key。
+配置来源优先级为：**含 OPENAI_API_KEY 的系统环境变量 → 含 OPENAI_API_KEY 的当前目录 .env → configure 保存的本机配置**。Key、BASE_URL、MODEL 作为同一来源的一组读取，避免把某平台的本机 Key 发往另一个来源的地址。环境变量或 .env 来源省略地址时默认 OpenAI 地址；省略或留空模型时，按该来源的 Base URL 自动选用上表默认模型。使用其他平台必须在同一来源中配置 Key 和地址，模型可以不填。仅设置 BASE_URL 不会覆盖本机配置的地址。高优先级来源的 Key 为空或为示例占位符时会明确报错，不悄悄使用其他 Key。
 
 程序只读取当前目录的 `.env`，不修改进程环境变量。超时配置仍按系统环境变量、当前目录 `.env`、默认 60 秒读取；合法范围 `(0,300]`。SDK 对部分临时错误最多重试两次，因此整体等待可能长于单次超时。不要提交 `.env` 或真实简历。
 
