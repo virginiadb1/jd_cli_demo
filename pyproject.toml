@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "resume-cli-demo"
+version = "0.1.0"
+description = "PDF resume extraction and AI job matching CLI"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["pypdf>=5,<7", "pydantic>=2.10,<3", "openai>=1.60,<3", "python-dotenv>=1,<2"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "reportlab>=4,<5", "ruff>=0.11,<1"]
+
+[project.scripts]
+resume-cli = "resume_cli.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/resume_cli"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]

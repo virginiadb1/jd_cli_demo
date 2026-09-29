@@ -1,0 +1,11 @@
+{
+  "overall_score": 44,
+  "skill_score": 88,
+  "experience_score": 0,
+  "education_score": 0,
+  "comment": "[MOCK 演示] 仅按技能词命中比例计算技能分；命中：Docker、FastAPI、Git、OpenAI、PostgreSQL、Python、React。经验及教育未评估，演示占位为 0；总分权重 50%/30%/20%，不代表真实能力。",
+  "interview_questions": [
+    "请介绍一个项目中你负责的模块及其技术取舍。",
+    "请说明你如何处理大模型 API 超时和不合法 JSON 响应。"
+  ]
+}

@@ -1,0 +1,1 @@
+"""Resume CLI demo."""

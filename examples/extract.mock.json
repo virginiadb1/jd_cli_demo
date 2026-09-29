@@ -1,0 +1,16 @@
+{
+  "name": "Alex Chen",
+  "phone": "",
+  "email": "alex@example.com",
+  "city": "Beijing",
+  "education": [],
+  "skills": [
+    "Python",
+    "React",
+    "FastAPI",
+    "Docker",
+    "PostgreSQL",
+    "Git",
+    "OpenAI"
+  ]
+}

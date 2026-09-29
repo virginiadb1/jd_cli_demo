@@ -1,0 +1,5 @@
+Full-stack Engineer (fictional demo)
+Build scientific workflow web applications using Python, FastAPI, React and PostgreSQL.
+Use Docker and Git for reliable delivery. Integrate OpenAI APIs with validation and retries.
+Kubernetes experience is a plus. Bachelor's degree in computer science or equivalent experience.
+Explain practical ownership of backend services, frontend features and automated tests.
